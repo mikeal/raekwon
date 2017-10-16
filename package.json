@@ -36,5 +36,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/mikeal/raekwon.git"
+  },
+  "dependencies": {
+    "setimmediate": "^1.0.5"
   }
 }

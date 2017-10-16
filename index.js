@@ -1,4 +1,5 @@
 /* globals HTMLElement */
+require('setimmediate')
 const random = () => Math.random().toString(36).substring(7)
 
 let observed = arr => {
@@ -53,15 +54,18 @@ let raekwon = (host, arr) => {
     }
   }
 
-  let sync = () => {
+  let sync = (...args) => {
     if (host.syncid !== syncid) return
-    host.innerHTML = Array.from(mapv(ret)).join('')
-    for (let id in replacements) {
-      let span = host.querySelector(`span[raekwon="${id}"`)
-      let rep = replacements[id]
-      if (rep.parentNode) rep.parentNode.removeChild(rep)
-      span.parentNode.replaceChild(rep, span)
-    }
+    if (host.__timeout) clearImmediate(host.__timeout)
+    host.__timeout = setImmediate(() => {
+      host.innerHTML = Array.from(mapv(ret)).join('')
+      for (let id in replacements) {
+        let span = host.querySelector(`span[raekwon="${id}"`)
+        let rep = replacements[id]
+        if (rep.parentNode) rep.parentNode.removeChild(rep)
+        span.parentNode.replaceChild(rep, span)
+      }
+    })
   }
 
   host.syncid = syncid
