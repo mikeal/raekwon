@@ -7,8 +7,17 @@ let observed = arr => {
     set: (...args) => {
       let [, key, value] = args
       if (arr.onchange) arr.onchange(...args)
+      if (Array.isArray(value)) {
+        value = observed(value)
+      }
       arr[key] = value
       return true
+    }
+  }
+  for (let i = 0; i < arr.length; i++) {
+    let value = arr[i]
+    if (Array.isArray(value)) {
+      arr[i] = observed(value)
     }
   }
   return new Proxy(arr, handler)

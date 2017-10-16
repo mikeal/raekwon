@@ -36,3 +36,12 @@ test('allarrays', t => {
   }
   t.same(i, 10)
 })
+
+test('sub arrays', t => {
+  t.plan(2)
+  let arr = rae.observed([[[]]])
+  arr[0][0].onchange = () => {
+    t.ok(true)
+  }
+  arr[0][0].push('test')
+})
