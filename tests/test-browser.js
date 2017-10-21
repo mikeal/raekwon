@@ -1,80 +1,73 @@
-/* globals raekwon, same */
-const puppeteer = require('puppeteer')
-const { test } = require('tap')
-
+/* globals raekwon */
+const cappadonna = require('cappadonna')
 const path = require('path')
-const bl = require('bl')
-const browserify = require('browserify')
+const test = cappadonna(path.join(__dirname, 'include.js'))
 
-const bundle = new Promise((resolve, reject) => {
-  var b = browserify()
-  b.add(path.join(__dirname, 'include.js'))
-  b.bundle().pipe(bl((err, buff) => {
-    if (err) return reject(err)
-    resolve(buff)
-  }))
-})
-
-const index = async inner => {
-  return `
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <meta charset="UTF-8">
-    </head>
-    <body>
-      <script>${await bundle}</script>
-      ${await inner}
-    </body>
-  </html>
-  `
-}
-
-let browser
-
-test('setup', async t => {
-  browser = await puppeteer.launch()
-  t.end()
-})
-
-const getPage = async (t, inner) => {
-  const page = await browser.newPage()
-  page.on('console', msg => console.log(msg.text))
-  page.on('error', err => { throw err })
-  page.on('pageerror', msg => { throw new Error(`Page Error: ${msg}`) })
-  await page.setContent(await index(inner))
-  page.browser = browser
-  let same = (x, y) => t.same(x, y)
-  await page.exposeFunction('same', (x, y) => {
-    same(x, y)
-  })
-  return page
-}
-
-test('basic', async t => {
+test('basic', async (page, t) => {
   t.plan(2)
-  let page = await getPage(t, `<test-one></test-one>`)
-  await page.waitFor('test-one')
+  await page.appendAndWait(`<test-one></test-one>`, 'test-one')
   await page.evaluate(async () => {
     let el = document.querySelector('test-one')
     let arr = ['<h1>', 'Test', '</h1>']
     let proxy = raekwon(el, arr)
     setTimeout(() => {
-      same(el.innerHTML, '<h1>Test</h1>')
+      t.same(el.innerHTML, '<h1>Test</h1>')
       let div = document.createElement('div')
       div.id = 'test-next'
       proxy.push(div)
-    }, 10)
+    }, 100)
   })
   await page.waitFor('div#test-next')
   await page.evaluate(async () => {
     let el = document.querySelector('test-one')
-    same(el.innerHTML, '<h1>Test</h1><div id="test-next"></div>')
+    t.same(el.innerHTML, '<h1>Test</h1><div id="test-next"></div>')
   })
-  await page.close()
 })
 
-test('teardown', async t => {
-  await browser.close()
-  t.end()
+test('types', async (page, t) => {
+  t.plan(1)
+  await page.appendAndWait(`<test-one></test-one>`, 'test-one')
+  await page.evaluate(async () => {
+    let el = document.querySelector('test-one')
+    let arr = [null, '', '<p>', true, false, undefined, 24, '</p>']
+    let proxy = raekwon(el, arr)
+    setTimeout(() => {
+      t.same(el.innerHTML, '<p>truefalse24</p>')
+      let div = document.createElement('div')
+      div.id = 'test-next'
+      proxy.push(div)
+    }, 100)
+  })
+  await page.waitFor('div#test-next')
+})
+
+test('sub-arrays', async (page, t) => {
+  t.plan(2)
+  await page.appendAndWait(`<test-one></test-one>`, 'test-one')
+  await page.evaluate(async () => {
+    let el = document.querySelector('test-one')
+    let arr = [[[null, '', '<p>', true, false, undefined, 24, '</p>']]]
+    let span = document.createElement('span')
+    document.body.appendChild(span)
+    arr.push(span)
+    let proxy = raekwon(el, arr)
+    window._proxy = proxy
+    setTimeout(() => {
+      t.same(el.innerHTML, '<p>truefalse24</p><span></span>')
+      let div = document.createElement('div')
+      div.id = 'test-next'
+      proxy.push([div])
+    }, 100)
+  })
+  await page.waitFor('div#test-next')
+  await page.evaluate(async () => {
+    window._proxy[0][0].push(document.createElement('test-two'))
+  })
+  await page.waitFor('test-two')
+  await page.evaluate(async () => {
+    let el = document.querySelector('test-one')
+    t.same(el.innerHTML, '<p>truefalse24</p><test-two></test-two><span></span><div id="test-next"></div>')
+    document.body.innerHTML += '<test-finished></test-finished>'
+  })
+  await page.waitFor('test-finished')
 })
