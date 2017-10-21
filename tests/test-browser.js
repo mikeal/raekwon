@@ -9,19 +9,17 @@ test('basic', async (page, t) => {
   await page.evaluate(async () => {
     let el = document.querySelector('test-one')
     let arr = ['<h1>', 'Test', '</h1>']
-    let proxy = raekwon(el, arr)
+    let proxy = await raekwon(el, arr)
+    t.same(el.innerHTML, '<h1>Test</h1>')
+    let div = document.createElement('div')
+    div.id = 'test-next'
+    proxy.push(div)
     setTimeout(() => {
-      t.same(el.innerHTML, '<h1>Test</h1>')
-      let div = document.createElement('div')
-      div.id = 'test-next'
-      proxy.push(div)
+      t.same(el.innerHTML, '<h1>Test</h1><div id="test-next"></div>')
+      document.body.innerHTML += '<test-finished></test-finished>'
     }, 100)
   })
-  await page.waitFor('div#test-next')
-  await page.evaluate(async () => {
-    let el = document.querySelector('test-one')
-    t.same(el.innerHTML, '<h1>Test</h1><div id="test-next"></div>')
-  })
+  await page.waitFor('test-finished')
 })
 
 test('types', async (page, t) => {
@@ -30,13 +28,11 @@ test('types', async (page, t) => {
   await page.evaluate(async () => {
     let el = document.querySelector('test-one')
     let arr = [null, '', '<p>', true, false, undefined, 24, '</p>']
-    let proxy = raekwon(el, arr)
-    setTimeout(() => {
-      t.same(el.innerHTML, '<p>truefalse24</p>')
-      let div = document.createElement('div')
-      div.id = 'test-next'
-      proxy.push(div)
-    }, 100)
+    let proxy = await raekwon(el, arr)
+    t.same(el.innerHTML, '<p>truefalse24</p>')
+    let div = document.createElement('div')
+    div.id = 'test-next'
+    proxy.push(div)
   })
   await page.waitFor('div#test-next')
 })
@@ -50,14 +46,12 @@ test('sub-arrays', async (page, t) => {
     let span = document.createElement('span')
     document.body.appendChild(span)
     arr.push(span)
-    let proxy = raekwon(el, arr)
+    let proxy = await raekwon(el, arr)
     window._proxy = proxy
-    setTimeout(() => {
-      t.same(el.innerHTML, '<p>truefalse24</p><span></span>')
-      let div = document.createElement('div')
-      div.id = 'test-next'
-      proxy.push([div])
-    }, 100)
+    t.same(el.innerHTML, '<p>truefalse24</p><span></span>')
+    let div = document.createElement('div')
+    div.id = 'test-next'
+    proxy.push([div])
   })
   await page.waitFor('div#test-next')
   await page.evaluate(async () => {
