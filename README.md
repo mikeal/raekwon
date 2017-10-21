@@ -1,4 +1,4 @@
-# Raekwon - Multi-dimensional arrays as dynamic templates.
+# Raekwon
 
 Binds a multi-dimensional array of partial strings and
 elements to a host element.
